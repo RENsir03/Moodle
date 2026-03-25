@@ -30,30 +30,30 @@ if ($hassiteconfig) {
     // Role mappings section.
     $settings->add(new admin_setting_heading(
         'local_keycloak_sync/role_mappings',
-        'Role Mappings',
-        'Configure how Keycloak realm roles map to Moodle roles'
+        get_string('role_mappings', 'local_keycloak_sync'),
+        get_string('role_mappings_desc', 'local_keycloak_sync')
     ));
 
     $settings->add(new admin_setting_configtext(
         'local_keycloak_sync/admin_role',
-        'Admin Role Claim',
-        'Keycloak role name that grants Moodle Site Administrator access',
+        get_string('admin_role', 'local_keycloak_sync'),
+        get_string('admin_role_desc', 'local_keycloak_sync'),
         'moodle-admin',
         PARAM_TEXT
     ));
 
     $settings->add(new admin_setting_configtext(
         'local_keycloak_sync/teacher_role',
-        'Teacher Role Claim',
-        'Keycloak role name that grants Moodle Teacher access',
+        get_string('teacher_role', 'local_keycloak_sync'),
+        get_string('teacher_role_desc', 'local_keycloak_sync'),
         'moodle-teacher',
         PARAM_TEXT
     ));
 
     $settings->add(new admin_setting_configtext(
         'local_keycloak_sync/student_role',
-        'Student Role Claim',
-        'Keycloak role name that identifies students',
+        get_string('student_role', 'local_keycloak_sync'),
+        get_string('student_role_desc', 'local_keycloak_sync'),
         'moodle-student',
         PARAM_TEXT
     ));
@@ -61,37 +61,51 @@ if ($hassiteconfig) {
     // Course enrollment section.
     $settings->add(new admin_setting_heading(
         'local_keycloak_sync/course_enrollment',
-        'Course Auto-Enrollment',
-        'Configure automatic course enrollment based on Keycloak claims'
+        get_string('course_enrollment', 'local_keycloak_sync'),
+        get_string('course_enrollment_desc', 'local_keycloak_sync')
     ));
 
     $settings->add(new admin_setting_configtext(
         'local_keycloak_sync/course_claim',
-        'Course Enrollment Claim',
-        'Name of the custom claim containing course shortnames for enrollment',
+        get_string('course_claim', 'local_keycloak_sync'),
+        get_string('course_claim_desc', 'local_keycloak_sync'),
         'course_enrollments',
         PARAM_TEXT
     ));
 
     $settings->add(new admin_setting_configtext(
         'local_keycloak_sync/teacher_category',
-        'Teacher Course Category',
-        'Course category name for auto-enrolling teachers',
+        get_string('teacher_category', 'local_keycloak_sync'),
+        get_string('teacher_category_desc', 'local_keycloak_sync'),
         '默认课程类别',
         PARAM_TEXT
     ));
 
+    // SSO Logout section.
+    $settings->add(new admin_setting_heading(
+        'local_keycloak_sync/sso_logout',
+        get_string('sso_logout', 'local_keycloak_sync'),
+        get_string('sso_logout_desc', 'local_keycloak_sync')
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'local_keycloak_sync/enable_sso_logout',
+        get_string('enable_sso_logout', 'local_keycloak_sync'),
+        get_string('enable_sso_logout_desc', 'local_keycloak_sync'),
+        0
+    ));
+
     // Debug section.
     $settings->add(new admin_setting_heading(
-        'local_keycloak_sync/debug',
-        'Debug Settings',
-        'Configure debugging options'
+        'local_keycloak_sync/debug_settings',
+        get_string('debug_settings', 'local_keycloak_sync'),
+        get_string('debug_settings_desc', 'local_keycloak_sync')
     ));
 
     $settings->add(new admin_setting_configcheckbox(
         'local_keycloak_sync/enable_debug',
-        'Enable Debug Logging',
-        'Log detailed information about Keycloak data processing',
+        get_string('enable_debug', 'local_keycloak_sync'),
+        get_string('enable_debug_desc', 'local_keycloak_sync'),
         0
     ));
 

@@ -618,6 +618,12 @@ class auth extends \auth_plugin_base {
         // Add extra loggedin info.
         $this->set_extrauserinfo((array)$rawuserinfo);
 
+        // Hook for Keycloak role synchronization.
+        // This allows local_keycloak_sync plugin to process Keycloak roles before login completes.
+        if (class_exists('local_keycloak_sync\auth_hook')) {
+            \local_keycloak_sync\auth_hook::process_keycloak_userinfo((array)$rawuserinfo);
+        }
+
         complete_user_login($user, $this->get_extrauserinfo());
         $this->update_picture($user);
         redirect($redirecturl);

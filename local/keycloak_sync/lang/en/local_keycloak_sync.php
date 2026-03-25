@@ -24,3 +24,30 @@
 
 $string['pluginname'] = 'Keycloak Role and Enrollment Sync';
 $string['pluginname_desc'] = 'Synchronizes user roles and course enrollments based on Keycloak OIDC token claims.';
+
+// Settings page strings
+$string['role_mappings'] = 'Role Mappings';
+$string['role_mappings_desc'] = 'Configure how Keycloak realm roles map to Moodle roles';
+$string['admin_role'] = 'Admin Role Claim';
+$string['admin_role_desc'] = 'Keycloak role name that grants Moodle Site Administrator access (default: moodle-admin)';
+$string['teacher_role'] = 'Teacher Role Claim';
+$string['teacher_role_desc'] = 'Keycloak role name that grants Moodle Teacher access (default: moodle-teacher)';
+$string['student_role'] = 'Student Role Claim';
+$string['student_role_desc'] = 'Keycloak role name that identifies students (default: moodle-student)';
+
+$string['course_enrollment'] = 'Course Auto-Enrollment';
+$string['course_enrollment_desc'] = 'Configure automatic course enrollment based on Keycloak claims';
+$string['course_claim'] = 'Course Enrollment Claim';
+$string['course_claim_desc'] = 'Name of the custom claim containing course shortnames for enrollment (default: course_enrollments)';
+$string['teacher_category'] = 'Teacher Course Category';
+$string['teacher_category_desc'] = 'Course category name for auto-enrolling teachers (default: 默认课程类别)';
+
+$string['debug_settings'] = 'Debug Settings';
+$string['debug_settings_desc'] = 'Configure debugging options';
+$string['enable_debug'] = 'Enable Debug Logging';
+$string['enable_debug_desc'] = 'Log detailed information about Keycloak data processing';
+
+$string['sso_logout'] = 'Single Sign-Out (SSO)';
+$string['sso_logout_desc'] = 'Configure Single Logout with Keycloak';
+$string['enable_sso_logout'] = 'Enable SSO Logout';
+$string['enable_sso_logout_desc'] = 'Redirect users to Keycloak logout when logging out from Moodle';

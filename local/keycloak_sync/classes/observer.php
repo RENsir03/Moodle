@@ -85,6 +85,9 @@ class observer {
 
         // Sync course enrollments based on custom claims.
         self::sync_course_enrollments($user, $keycloakdata);
+
+        // Clear stored Keycloak data after processing.
+        auth_hook::clear_stored_keycloak_data();
     }
 
     /**
@@ -117,6 +120,9 @@ class observer {
 
         // Enroll user in courses.
         self::sync_course_enrollments($user, $keycloakdata);
+
+        // Clear stored Keycloak data after processing.
+        auth_hook::clear_stored_keycloak_data();
     }
 
     /**
@@ -197,7 +203,52 @@ class observer {
     }
 
     /**
-     * Sync user roles based on Keycloak realm_access.roles claim.
+     * Extract roles from Keycloak data.
+     * Supports multiple claim formats:
+     * - realm_access.roles (standard Keycloak format)
+     * - resource_access.{client_id}.roles (client-specific roles)
+     * - roles (direct array)
+     *
+     * @param array $keycloakdata
+     * @return array List of role names
+     */
+    private static function extract_roles(array $keycloakdata): array {
+        $roles = [];
+
+        // Method 1: realm_access.roles (standard Keycloak format)
+        if (!empty($keycloakdata['realm_access']['roles'])) {
+            $roles = array_merge($roles, $keycloakdata['realm_access']['roles']);
+        }
+
+        // Method 2: resource_access (client-specific roles)
+        if (!empty($keycloakdata['resource_access'])) {
+            foreach ($keycloakdata['resource_access'] as $clientid => $clientdata) {
+                if (!empty($clientdata['roles'])) {
+                    $roles = array_merge($roles, $clientdata['roles']);
+                }
+            }
+        }
+
+        // Method 3: Direct roles claim
+        if (!empty($keycloakdata['roles']) && is_array($keycloakdata['roles'])) {
+            $roles = array_merge($roles, $keycloakdata['roles']);
+        }
+
+        // Method 4: groups claim (some Keycloak configurations use groups)
+        if (!empty($keycloakdata['groups']) && is_array($keycloakdata['groups'])) {
+            // Remove leading slashes from group names
+            $groups = array_map(function($group) {
+                return ltrim($group, '/');
+            }, $keycloakdata['groups']);
+            $roles = array_merge($roles, $groups);
+        }
+
+        // Remove duplicates and return
+        return array_unique($roles);
+    }
+
+    /**
+     * Sync user roles based on Keycloak roles.
      *
      * @param \stdClass $user
      * @param array $keycloakdata
@@ -208,13 +259,8 @@ class observer {
 
         $config = self::get_config();
 
-        // Extract roles from realm_access claim.
-        $roles = [];
-        if (!empty($keycloakdata['realm_access']['roles'])) {
-            $roles = $keycloakdata['realm_access']['roles'];
-        } elseif (!empty($keycloakdata['roles'])) {
-            $roles = $keycloakdata['roles'];
-        }
+        // Extract all roles from Keycloak data.
+        $roles = self::extract_roles($keycloakdata);
 
         if (empty($roles)) {
             self::debug('No roles found in Keycloak data');
@@ -225,25 +271,42 @@ class observer {
 
         $systemcontext = \context_system::instance();
 
-        // Check for admin role.
-        $adminrole = $config->admin_role ?? 'moodle-admin';
-        if (in_array($adminrole, $roles)) {
-            self::assign_system_role($user->id, 'manager', $systemcontext);
-            self::debug('Assigned manager role to user ' . $user->username);
-        }
+        // Define role mappings (configurable)
+        $role_mappings = [
+            'admin' => [
+                'keycloak_roles' => [$config->admin_role ?? 'moodle-admin'],
+                'moodle_role' => 'manager',  // Site manager
+            ],
+            'teacher' => [
+                'keycloak_roles' => [$config->teacher_role ?? 'moodle-teacher'],
+                'moodle_role' => 'editingteacher',
+            ],
+            'student' => [
+                'keycloak_roles' => [$config->student_role ?? 'moodle-student'],
+                'moodle_role' => 'student',
+            ],
+        ];
 
-        // Check for teacher role.
-        $teacherrole = $config->teacher_role ?? 'moodle-teacher';
-        if (in_array($teacherrole, $roles)) {
-            self::assign_system_role($user->id, 'editingteacher', $systemcontext);
-            self::enroll_teacher_in_category_courses($user);
-            self::debug('Assigned editingteacher role to user ' . $user->username);
-        }
+        // Process each role mapping
+        foreach ($role_mappings as $mappingtype => $mapping) {
+            $hasrole = false;
+            foreach ($mapping['keycloak_roles'] as $keycloakrole) {
+                if (in_array($keycloakrole, $roles)) {
+                    $hasrole = true;
+                    break;
+                }
+            }
 
-        // Check for student role.
-        $studentrole = $config->student_role ?? 'moodle-student';
-        if (in_array($studentrole, $roles)) {
-            self::debug('User ' . $user->username . ' has student role');
+            if ($hasrole) {
+                // Assign system role
+                self::assign_system_role($user->id, $mapping['moodle_role'], $systemcontext);
+                self::debug('Assigned ' . $mapping['moodle_role'] . ' role to user ' . $user->username);
+
+                // Special handling for teachers
+                if ($mappingtype === 'teacher') {
+                    self::enroll_teacher_in_category_courses($user);
+                }
+            }
         }
     }
 
@@ -274,6 +337,8 @@ class observer {
         if (!$existing) {
             role_assign($role->id, $userid, $context->id);
             self::debug('Assigned role ' . $shortname . ' to user ' . $userid);
+        } else {
+            self::debug('Role ' . $shortname . ' already assigned to user ' . $userid);
         }
     }
 

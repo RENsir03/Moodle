@@ -40,8 +40,20 @@ class auth_plugin_keycloak extends auth_plugin_oauth2 {
             return;
         }
 
+        // Check if this user is linked to Keycloak (regardless of auth type)
         $issuer = $DB->get_record('oauth2_issuer', ['name' => 'Keycloak']);
         if (!$issuer) {
+            return;
+        }
+
+        // Check if user has linked login with Keycloak
+        $linkedlogin = $DB->get_record('oauth2_linked_login', [
+            'userid' => $USER->id,
+            'issuerid' => $issuer->id
+        ]);
+
+        // If no linked login, check if user auth is oauth2/keycloak
+        if (!$linkedlogin && $USER->auth !== 'oauth2' && $USER->auth !== 'keycloak') {
             return;
         }
 
@@ -59,21 +71,20 @@ class auth_plugin_keycloak extends auth_plugin_oauth2 {
 
         $redirecturl = new moodle_url('/');
 
+        // Keycloak logout requires id_token_hint for proper logout
         $params = [
-            'post_logout_redirect_uri' => urlencode($redirecturl->out(false)),
+            'post_logout_redirect_uri' => $redirecturl->out(false),
         ];
 
-        $linkedlogin = $DB->get_record('oauth2_linked_login', [
-            'userid' => $USER->id,
-            'issuerid' => $issuer->id
-        ]);
-
+        // Try to get id_token from linked_login
         if ($linkedlogin && !empty($linkedlogin->token)) {
             $params['id_token_hint'] = $linkedlogin->token;
         }
 
+        // Build logout URL
         $logouturl .= '?' . http_build_query($params);
 
+        // Store in session for redirect after Moodle logout
         $SESSION->keycloak_slo_logout_url = $logouturl;
     }
 
