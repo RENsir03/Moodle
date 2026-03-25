@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Keycloak](https://img.shields.io/badge/SSO-Keycloak-31A8FF?logo=keycloak&logoColor=white)](#single-sign-on-sso)
 
-**企业级开源学习管理平台 | OpenID Connect 单点登录集成**
+**企业级开源学习管理平台 | OpenID Connect 单点登录集成 | Keycloak 角色自动映射**
 
 </div>
 
@@ -19,11 +19,9 @@
 
 - [🚀 项目概览](#-项目概览)
 - [✨ 核心特性](#-核心特性)
+- [🆕 新增功能：Keycloak 角色映射](#-新增功能keycloak-角色映射)
 - [🏗️ 系统架构](#️-系统架构)
 - [🔐 单点登录 (SSO)](#-单点登录-sso)
-  - [Keycloak 集成](#keycloak-集成)
-  - [身份认证流程](#身份认证流程)
-  - [详细文档](#详细文档)
 - [📦 技术栈](#-技术栈)
 - [🛠️ 快速部署](#️-快速部署)
 - [⚙️ 配置说明](#️-配置说明)
@@ -36,11 +34,12 @@
 
 ## 🚀 项目概览
 
-本项目是基于 **Moodle 4.x** 构建的企业级学习管理系统 (LMS)，深度集成了 **Keycloak** 身份认证平台，实现了完整的 **OpenID Connect (OIDC)** 单点登录解决方案。
+本项目是基于 **Moodle 4.x** 构建的企业级学习管理系统 (LMS)，深度集成了 **Keycloak** 身份认证平台，实现了完整的 **OpenID Connect (OIDC)** 单点登录解决方案，并支持 **Keycloak 角色自动映射到 Moodle 权限**。
 
 ### 🎯 设计目标
 
 - **安全性**：企业级身份认证与授权
+- **自动化**：Keycloak 角色自动映射到 Moodle
 - **可扩展性**：模块化架构，易于功能扩展
 - **标准化**：遵循 OpenID Connect 协议标准
 - **用户体验**：无缝的单点登录体验
@@ -57,6 +56,7 @@
 - ✅ 自动用户同步与属性映射
 
 ### 👥 用户管理
+- ✅ **Keycloak 角色自动映射**到 Moodle 角色
 - ✅ 基于角色的访问控制 (RBAC)
 - ✅ 细粒度权限管理
 - ✅ 用户组与组织架构同步
@@ -76,6 +76,52 @@
 
 ---
 
+## 🆕 新增功能：Keycloak 角色映射
+
+### 功能概述
+
+本项目新增了 **Keycloak 角色自动映射**功能，可以将 Keycloak 中的角色自动同步到 Moodle 的用户角色，实现统一的身份权限管理。
+
+### 角色映射规则
+
+| Keycloak 角色 | Moodle 角色 | 权限说明 |
+|--------------|-------------|----------|
+| `moodle-admin` | `manager` | 站点管理员，拥有所有管理权限 |
+| `moodle-teacher` | `editingteacher` | 教师，可以编辑课程内容和评分 |
+| `moodle-student` | `student` | 学生，参与课程学习 |
+
+### 工作流程
+
+```
+用户登录 Keycloak → 返回包含角色的 Token → Moodle 解析 Token → 
+自动分配对应角色 → 用户获得相应权限
+```
+
+### 配置步骤
+
+1. **在 Keycloak 中创建角色**
+   - 进入 Realm Roles
+   - 创建 `moodle-admin`, `moodle-teacher`, `moodle-student`
+
+2. **配置客户端作用域**
+   - 创建 `moodle-roles` 客户端作用域
+   - 添加 "User Realm Role" Mapper
+   - 将作用域分配给 Moodle 客户端
+
+3. **为用户分配角色**
+   - 在 Keycloak 中为用户分配相应角色
+
+4. **Moodle 自动处理**
+   - 用户登录时自动获取角色
+   - 自动分配 Moodle 角色
+   - 支持课程自动注册
+
+### 详细文档
+
+📖 **[Keycloak 角色映射配置指南](./KEYCLOAK_ROLE_MAPPING_GUIDE.md)**
+
+---
+
 ## 🏗️ 系统架构
 
 ```mermaid
@@ -88,8 +134,8 @@ graph TB
     
     subgraph "应用层"
         D[Moodle LMS]
-        E[Auth Plugin<br/>auth/keycloak]
-        F[Sync Plugin<br/>local/keycloak_sync]
+        E[Auth Plugin<br/>auth/oauth2]
+        F[Role Sync Plugin<br/>local/keycloak_sync]
     end
     
     subgraph "认证层"
@@ -107,7 +153,7 @@ graph TB
     C -->|REST API| D
     D -->|OIDC Protocol| E
     E -->|OAuth2/OIDC| G
-    F -->|Event Hooks| D
+    F -->|Role Mapping| D
     G -->|LDAP| H
     D -->|SQL| I
     D -->|File I/O| J
@@ -258,8 +304,13 @@ docker run -p 8080:8080 \
 # 2. 创建 Realm 和 Client
 # 访问 http://localhost:8080/admin
 
-# 3. 配置详细步骤见文档
+# 3. 配置角色映射
+# 运行自动配置脚本
+./keycloak_role_config.sh
+
+# 4. 配置详细步骤见文档
 # ./KEYCLOAK_INTEGRATION_DETAILS.md
+# ./KEYCLOAK_ROLE_MAPPING_GUIDE.md
 ```
 
 ---
@@ -271,8 +322,8 @@ docker run -p 8080:8080 \
 | 文件路径 | 说明 |
 |---------|------|
 | `config.php` | Moodle 主配置文件 |
-| `auth/keycloak/settings.php` | Keycloak 认证插件配置 |
-| `local/keycloak_sync/settings.php` | Keycloak 同步插件配置 |
+| `auth/oauth2/classes/auth.php` | OAuth2 认证插件（已添加角色映射钩子） |
+| `local/keycloak_sync/settings.php` | Keycloak 角色同步插件配置 |
 
 ### 关键配置项
 
@@ -285,33 +336,52 @@ $CFG->dbname    = 'moodle';
 $CFG->dbuser    = 'moodle';
 $CFG->dbpass    = 'your-password';
 
-// Keycloak 端点配置 (auth/keycloak)
+// Keycloak 端点配置
 $CFG->keycloak_baseurl = 'http://10.70.5.223:8080/realms/master';
 $CFG->keycloak_clientid = 'moodle-realm';
 $CFG->keycloak_clientsecret = 'your-client-secret';
 ```
 
+### 角色映射配置
+
+在 Moodle 管理后台：
+**Site Administration** → **Plugins** → **Local plugins** → **Keycloak Role and Enrollment Sync**
+
+配置项：
+- **Admin Role Claim**: `moodle-admin`
+- **Teacher Role Claim**: `moodle-teacher`
+- **Student Role Claim**: `moodle-student`
+- **Enable Debug Logging**: ✅ (开发环境启用)
+
 ---
 
 ## 🔧 高级功能
 
-### 自定义认证插件
+### 自定义角色映射插件
 
-项目包含自定义开发的 `auth_keycloak` 插件，扩展了标准 OAuth2 功能：
+项目包含自定义开发的 `local_keycloak_sync` 插件，实现 Keycloak 角色到 Moodle 的自动映射：
 
-- **强制登录提示** - 支持用户切换账号
-- **自定义 Scope** - 支持额外的 OIDC Scope
-- **Token 刷新** - 自动刷新 Access Token
-- **SLO 支持** - 完整的单点登出实现
+- **自动角色分配** - 基于 Keycloak 角色自动分配 Moodle 权限
+- **课程自动注册** - 教师自动注册到指定类别课程
+- **事件监听** - 响应 Moodle 用户登录/创建事件
+- **调试日志** - 详细的角色映射过程日志
+- **多种角色来源** - 支持 realm_access、resource_access、groups 等多种角色声明格式
 
-### 用户同步插件
+### 代码修改说明
 
-`local_keycloak_sync` 插件提供：
+**修改的文件**：`auth/oauth2/classes/auth.php`
 
-- **角色自动映射** - 基于 Keycloak 角色分配 Moodle 权限
-- **课程自动注册** - 根据 Token 声明自动选课
-- **事件监听** - 响应 Moodle 用户事件进行同步
-- **调试日志** - 详细的同步过程日志
+在 `complete_login` 方法中添加了角色处理钩子：
+
+```php
+// Hook for Keycloak role synchronization.
+// This allows local_keycloak_sync plugin to process Keycloak roles before login completes.
+if (class_exists('local_keycloak_sync\auth_hook')) {
+    \local_keycloak_sync\auth_hook::process_keycloak_userinfo(
+        json_decode(json_encode($rawuserinfo), true)
+    );
+}
+```
 
 ---
 
@@ -329,6 +399,7 @@ $CFG->keycloak_clientsecret = 'your-client-secret';
 
 - 用户登录成功率
 - SSO 认证响应时间
+- 角色映射成功率
 - 数据库查询性能
 - 系统资源使用率
 
